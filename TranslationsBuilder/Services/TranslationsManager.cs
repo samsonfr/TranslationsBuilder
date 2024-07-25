@@ -809,6 +809,10 @@ namespace TranslationsBuilder.Services {
       return ObjectName.Substring(ObjectName.IndexOf("[") + 1, (ObjectName.IndexOf("]") - ObjectName.IndexOf("[") - 1));
     }
 
+    private static string GetDisplayFolder(string ObjectName) {
+      return ObjectName.Substring(ObjectName.IndexOf("]") + 1, ObjectName.Length - ObjectName.IndexOf("]") - 1);
+    }
+
     private static string GetLevelName(string ObjectName) {
       return ObjectName.Substring(ObjectName.IndexOf("]") + 1, ObjectName.Length - ObjectName.IndexOf("]") - 1);
     }
@@ -917,7 +921,7 @@ namespace TranslationsBuilder.Services {
     public static void UpdateDisplayFolderForTable(string ObjectName, string TargetLanguage, string TranslatedValue) {
 
       string tableName = GetTableName(ObjectName);
-      string folderName = GetChildName(ObjectName);
+      string folderName = GetDisplayFolder(ObjectName);
 
 
       Table table = model.Tables[tableName];
@@ -957,7 +961,11 @@ namespace TranslationsBuilder.Services {
           break;
       };
 
-      var customizedDefaultTranslation = model.Cultures[model.Culture].ObjectTranslations[targetObject, PropertyType]?.Value;
+      string customizedDefaultTranslation = null;
+
+      if (targetObject != null) { // FS: Always null for DisplayFolder
+        customizedDefaultTranslation = model.Cultures[model.Culture].ObjectTranslations[targetObject, PropertyType]?.Value;
+      }
 
       if (!string.IsNullOrEmpty(customizedDefaultTranslation)) {
         return customizedDefaultTranslation;
