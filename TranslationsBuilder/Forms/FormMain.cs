@@ -228,7 +228,7 @@ namespace TranslationsBuilder {
     private void ImportTranslations(object sender, EventArgs e) {
 
       dialogOpenFile.InitialDirectory = AppSettings.TranslationsInboxFolderPath;
-      dialogOpenFile.Filter = "CSV files (*.csv)|*.csv";
+      dialogOpenFile.Filter = "Excel files (*.xlsx)|*.xlsx";
       dialogOpenFile.FilterIndex = 1;
       dialogOpenFile.RestoreDirectory = true;
 

@@ -16,6 +16,7 @@ using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Linq;
 using Newtonsoft.Json.Linq;
+using ClosedXML.Excel;
 
 namespace TranslationsBuilder.Services {
 
@@ -704,101 +705,100 @@ namespace TranslationsBuilder.Services {
       startInfo.FileName = "Notepad.exe";
       startInfo.Arguments = filePath;
       Process.Start(startInfo);
-
-
     }
 
     public static void ExportTranslations(string targetLanguage = null, bool OpenInExcel = true) {
 
-      try {
-        var translationsTable = GetTranslationsTable(targetLanguage);
-
-        string linebreak = "\r\n";
-
-        // set csv file headers
-        string csv = string.Join(",", translationsTable.Headers) + linebreak;
-
-        // add line for each row
-        foreach (var row in translationsTable.Rows) {
-          csv += string.Join(",", row) + linebreak;
-        }
+      try
+      {
+        // Build output file path
 
         DirectoryInfo path = Directory.CreateDirectory(AppSettings.TranslationsOutboxFolderPath);
 
         string filePath;
-        if (targetLanguage == null) {
-          filePath = path + @"/" + DatasetName + "-Translations-Master.csv";
+        if (targetLanguage == null)
+        {
+          filePath = path + @"/" + DatasetName + "-Translations-Master.xlsx";
         }
-        else {
+        else
+        {
           string targetLanguageDisplayName = SupportedLanguages.AllLanguages[targetLanguage].DisplayName;
-          filePath = path + @"/" + DatasetName + "-Translations-" + targetLanguageDisplayName + ".csv";
+          filePath = path + @"/" + DatasetName + "-Translations-" + targetLanguageDisplayName + ".xlsx";
         }
 
-        StreamWriter writer = new StreamWriter(File.Open(filePath, FileMode.Create), Encoding.UTF8);
-        writer.Write(csv);
-        writer.Flush();
-        writer.Dispose();
+        // Save to Excel
 
-        //StreamWriter writerJson = new StreamWriter(File.Open(filePath.Replace(".csv", ".json"), FileMode.Create), Encoding.UTF8);
-        //writerJson.Write(System.Text.Json.JsonSerializer.Serialize(translationsTable));
-        //writerJson.Flush();
-        //writerJson.Dispose();
+        TranslationsTable translationsTable = GetTranslationsTable(targetLanguage);
 
-        if (OpenInExcel) {
+        WriteTranslationsTableToExcel(filePath, translationsTable);
+
+        if (OpenInExcel)
+        {
           string excelFilePath = @"""" + filePath + @"""";
-          ExcelUtilities.OpenCsvInExcel(excelFilePath);
+          ExcelUtilities.OpenInExcel(excelFilePath);
         }
-
       }
 
       catch (Exception ex) {
         UserInteraction.PromptUserWithError(ex);
       }
-
-
     }
-
+   
     public static void ExportAllTranslationSheets(bool OpenInExcel = false) {
 
       try {
-
-        string linebreak = "\r\n";
-
+        DirectoryInfo path = Directory.CreateDirectory(AppSettings.TranslationsOutboxFolderPath);
+        
         foreach (var culture in model.Cultures) {
           if (culture.Name != model.Culture) {
 
             string targetLanguage = culture.Name;
             var translationsTable = GetTranslationsTable(targetLanguage);
-            string csv = string.Join(",", translationsTable.Headers) + linebreak;
-
-            // add line for each row
-            foreach (var row in translationsTable.Rows) {
-              csv += string.Join(",", row) + linebreak;
-            }
-
-            DirectoryInfo path = Directory.CreateDirectory(AppSettings.TranslationsOutboxFolderPath);
 
             string targetLanguageDisplayName = SupportedLanguages.AllLanguages[targetLanguage].DisplayName;
-            string filePath = path + @"/" + DatasetName + "-Translations-" + targetLanguageDisplayName + ".csv";
+            string filePath = path + @"/" + DatasetName + "-Translations-" + targetLanguageDisplayName + ".xlsx";
 
-            StreamWriter writer = new StreamWriter(File.Open(filePath, FileMode.Create), Encoding.UTF8);
-            writer.Write(csv);
-            writer.Flush();
-            writer.Dispose();
-
+            WriteTranslationsTableToExcel(filePath, translationsTable);
+            
             if (OpenInExcel) {
               string excelFilePath = @"""" + filePath + @"""";
-              ExcelUtilities.OpenCsvInExcel(excelFilePath);
+              ExcelUtilities.OpenInExcel(excelFilePath);
             }
-
           }
         }
-
       }
       catch (Exception ex) {
         UserInteraction.PromptUserWithError(ex);
       }
+    }
 
+    private static void WriteTranslationsTableToExcel(string filePath, TranslationsTable translationsTable)
+    {
+      using (var workbook = new XLWorkbook())
+      {
+        var worksheet = workbook.Worksheets.Add("Translations");
+
+        for (int col = 0; col < translationsTable.Headers.Length; ++col)
+        {
+          worksheet.Cell(1, col + 1).Value = translationsTable.Headers[col];
+        }
+
+        for (int row = 0; row < translationsTable.Rows.Count; ++row)
+        {
+          string[] curRow = translationsTable.Rows[row];
+
+          for (int col = 0; col < curRow.Length; ++col)
+          {
+            worksheet.Cell(row + 2, col + 1).Value = curRow[col];
+          }
+        }
+        
+        var range = worksheet.Range(1, 1, translationsTable.Rows.Count + 1, translationsTable.Headers.Length);       
+        var table = range.CreateTable();
+        worksheet.Columns().AdjustToContents();
+
+        workbook.SaveAs(filePath);
+      }
     }
 
     private static string GetTableName(string ObjectName) {
@@ -1002,50 +1002,65 @@ namespace TranslationsBuilder.Services {
 
     public static void ImportTranslations(string filePath) {
 
-      try {
+      try {        
+        using (var workbook = new XLWorkbook(filePath))
+        {          
+          var worksheet = workbook.Worksheets.FirstOrDefault();
 
-        string linebreak = "\r\n";
+          if (worksheet != null)
+          {
+            // Make sure cultures are defined in the model
 
-        FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        StreamReader reader = new StreamReader(stream);
-        var lines = reader.ReadToEnd().Trim().Split(linebreak);
-        var headers = lines[0].Split(",");
+            int columnCount = worksheet.CellsUsed().Max(cell => cell.Address.ColumnNumber);
+            
+            var cultureCount = columnCount - 3;
+            
+            for (int col = 3; col < columnCount; ++col)
+            {
+              string curLanguage = worksheet.Cell(1, col + 1).Value.GetText();
+              var language = SupportedLanguages.GetLanguageFromFullName(curLanguage);
 
-        var cultureCount = headers.Length - 3;
-        var culturesList = new List<string>();
+              if (language != null)
+              {
+                if (!model.Cultures.Contains(language.LanguageId))
+                {
+                  model.Cultures.Add(new Culture { Name = language.LanguageId });
+                }                
+              }              
+            }
+            
+            // Scan rows
 
-        for (int columnNumber = 3; (columnNumber < headers.Length); columnNumber++) {
-          var language = SupportedLanguages.GetLanguageFromFullName(headers[columnNumber]);
-          culturesList.Add(language.LanguageId);
-        }
+            int rowCount = worksheet.CellsUsed().Max(cell => cell.Address.RowNumber);
 
-        foreach (string cultureName in culturesList) {
-          if (!model.Cultures.Contains(cultureName)) {
-            model.Cultures.Add(new Culture { Name = cultureName });
-          }
-        }
+            // enumerate through lines in CSV data
+            for (int row = 1; row < rowCount; ++row)
+            {
+              string objectType = worksheet.Cell(row + 1, 1).Value.GetText();
+              string propertyName = worksheet.Cell(row + 1, 2).Value.GetText();
+              string objectName = worksheet.Cell(row + 1, 3).Value.GetText();
 
-        // enumerate through lines in CSV data
-        for (int lineNumber = 1; lineNumber <= lines.Length - 1; lineNumber++) {
-          var row = lines[lineNumber];
-          var rowValues = row.Split(",");
-          string objectType = rowValues[0];
-          string propertyName = rowValues[1];
-          string objectName = rowValues[2];
-          // enumerate across language columns
-          for (int columnNumber = 3; (columnNumber < headers.Length); columnNumber++) {
-            string targetLanguage = SupportedLanguages.GetLanguageFromFullName(headers[columnNumber]).LanguageId;
-            string translatedValue = rowValues[columnNumber];
-            if (!string.IsNullOrEmpty(translatedValue) && TranslationsManager.EnsureMetadataObjectExists(objectType, objectName)) {
-              TranslationsManager.SetDatasetObjectTranslation(objectType, propertyName, objectName, targetLanguage, translatedValue);
+              for (int columnNumber = 3; columnNumber < columnCount; ++columnNumber)
+              {
+                string curLanguage = worksheet.Cell(1, columnNumber + 1).Value.GetText();
+                var language = SupportedLanguages.GetLanguageFromFullName(curLanguage);
+
+                if (language != null)
+                {
+                  string targetLanguage = language.LanguageId;
+                  var curValue = worksheet.Cell(row + 1, columnNumber + 1).Value;
+
+                  string translatedValue = !curValue.IsBlank ? curValue.GetText() : String.Empty;
+
+                  if (!string.IsNullOrEmpty(translatedValue) && TranslationsManager.EnsureMetadataObjectExists(objectType, objectName))
+                  {
+                    TranslationsManager.SetDatasetObjectTranslation(objectType, propertyName, objectName, targetLanguage, translatedValue);
+                  }
+                }
+              }
             }
           }
         }
-
-        // close file and release resources
-        reader.Close();
-        stream.Close();
-
       }
       catch (Exception ex) {
         UserInteraction.PromptUserWithError(ex);
