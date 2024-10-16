@@ -252,18 +252,19 @@ namespace TranslationsBuilder.Services {
       }
       rows.Add(captionRowValues.ToArray());
 
-      if (!string.IsNullOrEmpty(table.Description)) {
-        List<string> descriptionRowValues = new List<string> {
-          "Table",
-          "Description",
-          table.Name,
-          defaultLanguage.ObjectTranslations[table, TranslatedProperty.Description]?.Value ?? table.Name
-        };
-        foreach (var language in translationSet.SecondaryLanguages) {
-          descriptionRowValues.Add(model.Cultures[language.LanguageId].ObjectTranslations[table, TranslatedProperty.Description]?.Value);
-        }
-        rows.Add(descriptionRowValues.ToArray());
+      // Always add row for Description
+
+      List<string> descriptionRowValues = new List<string> {
+        "Table",
+        "Description",
+        table.Name,
+        defaultLanguage.ObjectTranslations[table, TranslatedProperty.Description]?.Value ?? table.Name
+      };
+      foreach (var language in translationSet.SecondaryLanguages) {
+        descriptionRowValues.Add(model.Cultures[language.LanguageId].ObjectTranslations[table, TranslatedProperty.Description]?.Value);
       }
+      rows.Add(descriptionRowValues.ToArray());
+      
 
       return rows;
     }
