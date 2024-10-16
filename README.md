@@ -5,7 +5,7 @@
 - This version use the ClosedXml open source libray to Export and Import Excel files. When exporting it creates a real table that is autosized by column content and can be sorted/filtered.
 
 **Display Folder support**
--Fixed DisplayFolder bugs : import from CSV and directly in the UI grid.
+- Fixed DisplayFolder bugs : import from CSV and directly in the UI grid.
 
 **UI changes**
 - Changed default shortcut keys to avoid Ctrl+C and Ctrl+S which are usually associated with Copy and Save.
