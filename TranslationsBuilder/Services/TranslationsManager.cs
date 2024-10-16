@@ -293,14 +293,14 @@ namespace TranslationsBuilder.Services {
         displayFoldersForTable.Add(column.DisplayFolder);
       }
 
-      if (!string.IsNullOrEmpty(column.Description)) {
-        List<string> descriptionRowValues = new List<string> { "Column", "Description", $"{table.Name}[{column.Name}]", defaultLanguage.ObjectTranslations[column, TranslatedProperty.Description]?.Value };
-        foreach (var language in translationSet.SecondaryLanguages) {
-          descriptionRowValues.Add(model.Cultures[language.LanguageId].ObjectTranslations[column, TranslatedProperty.Description]?.Value);
-        }
-        rows.Add(descriptionRowValues.ToArray());
+      // Always add row for Description
+      
+      List<string> descriptionRowValues = new List<string> { "Column", "Description", $"{table.Name}[{column.Name}]", defaultLanguage.ObjectTranslations[column, TranslatedProperty.Description]?.Value };
+      foreach (var language in translationSet.SecondaryLanguages) {
+        descriptionRowValues.Add(model.Cultures[language.LanguageId].ObjectTranslations[column, TranslatedProperty.Description]?.Value);
       }
-
+      rows.Add(descriptionRowValues.ToArray());
+      
       return rows;
     }
 
@@ -329,14 +329,14 @@ namespace TranslationsBuilder.Services {
         displayFoldersForTable.Add(measure.DisplayFolder);
       }
 
-      if (!string.IsNullOrEmpty(measure.Description)) {
-        List<string> descriptionRowValues = new List<string> { "Measure", "Description", $"{table.Name}[{measure.Name}]{measure.Name}", defaultLanguage.ObjectTranslations[measure, TranslatedProperty.Description]?.Value };
-        foreach (var language in translationSet.SecondaryLanguages) {
-          descriptionRowValues.Add(model.Cultures[language.LanguageId].ObjectTranslations[measure, TranslatedProperty.Description]?.Value);
-        }
-        rows.Add(descriptionRowValues.ToArray());
+      // Always add row for Description
+      
+      List<string> descriptionRowValues = new List<string> { "Measure", "Description", $"{table.Name}[{measure.Name}]{measure.Name}", defaultLanguage.ObjectTranslations[measure, TranslatedProperty.Description]?.Value };
+      foreach (var language in translationSet.SecondaryLanguages) {
+        descriptionRowValues.Add(model.Cultures[language.LanguageId].ObjectTranslations[measure, TranslatedProperty.Description]?.Value);
       }
-
+      rows.Add(descriptionRowValues.ToArray());
+      
       return rows;
     }
 
@@ -382,16 +382,14 @@ namespace TranslationsBuilder.Services {
         rows.Add(levelCaptionRowValues.ToArray());
       }
 
-
-
-      if (!string.IsNullOrEmpty(hierarchy.Description)) {
-        List<string> descriptionRowValues = new List<string> { "Hierarchy", "Description", $"{table.Name}[{hierarchy.Name}]", defaultLanguage.ObjectTranslations[hierarchy, TranslatedProperty.Description]?.Value };
-        foreach (var language in translationSet.SecondaryLanguages) {
-          descriptionRowValues.Add(model.Cultures[language.LanguageId].ObjectTranslations[hierarchy, TranslatedProperty.Description]?.Value);
-        }
-        rows.Add(descriptionRowValues.ToArray());
+      // Always add row for Description
+      
+      List<string> descriptionRowValues = new List<string> { "Hierarchy", "Description", $"{table.Name}[{hierarchy.Name}]", defaultLanguage.ObjectTranslations[hierarchy, TranslatedProperty.Description]?.Value };
+      foreach (var language in translationSet.SecondaryLanguages) {
+        descriptionRowValues.Add(model.Cultures[language.LanguageId].ObjectTranslations[hierarchy, TranslatedProperty.Description]?.Value);
       }
-
+      rows.Add(descriptionRowValues.ToArray());
+      
       return rows;
     }
 
@@ -566,7 +564,7 @@ namespace TranslationsBuilder.Services {
 
     }
 
-    public static void PopulateEmptyTranslations(string CultureName, IStatusCalback StatusCalback = null) {
+   public static void PopulateEmptyTranslations(string CultureName, IStatusCalback StatusCalback = null) {
 
       // add culture to data model if it doesn't already exist
       if (!model.Cultures.ContainsName(CultureName)) {
@@ -823,7 +821,7 @@ namespace TranslationsBuilder.Services {
       // display folder translations for child columns, measures and hierchies
       if (ObjectType.Equals("Table") && PropertyName.Equals("DisplayFolder")) { return null; }
 
-      if (ObjectType.Equals("Table") && PropertyName.Equals("Caption")) {
+      if (ObjectType.Equals("Table") && (PropertyName.Equals("Caption") || PropertyName.Equals("Description"))) {
         return model.Tables[ObjectName];
       }
       else {
@@ -1002,7 +1000,9 @@ namespace TranslationsBuilder.Services {
 
     public static void ImportTranslations(string filePath) {
 
-      try {        
+      try {
+        Cursor.Current = Cursors.WaitCursor;
+
         using (var workbook = new XLWorkbook(filePath))
         {          
           var worksheet = workbook.Worksheets.FirstOrDefault();
@@ -1065,7 +1065,10 @@ namespace TranslationsBuilder.Services {
       catch (Exception ex) {
         UserInteraction.PromptUserWithError(ex);
       }
-
+      finally
+      {
+        Cursor.Current = Cursors.Default;
+      }
     }
 
     public static void ImportLocalizedLabels(string filePath) {
