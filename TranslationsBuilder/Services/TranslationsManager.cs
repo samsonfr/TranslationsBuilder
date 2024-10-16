@@ -847,7 +847,8 @@ namespace TranslationsBuilder.Services {
     public static bool EnsureMetadataObjectExists(string ObjectType, string ObjectName) {
 
       if (ObjectType.Equals("Table")) {
-        return model.Tables.Contains(ObjectName);
+        string useTableName = ObjectName.IndexOf("[") != -1 ? GetTableName(ObjectName) : ObjectName; // Display Folder ObjectName format: D_TEMPS[ID_DATE]Date
+        return model.Tables.Contains(useTableName);
       }
       else {
         string tableName = GetTableName(ObjectName);
@@ -924,7 +925,7 @@ namespace TranslationsBuilder.Services {
 
       Table table = model.Tables[tableName];
 
-      foreach (Column column in table.Columns) {
+      foreach (Column column in table.Columns.Where(c => c.Type != ColumnType.RowNumber)) { // Important : Skip RowNumber columns or it will fail
         if (column.DisplayFolder.Equals(folderName)) {
           model.Cultures[TargetLanguage].ObjectTranslations.SetTranslation(column, TranslatedProperty.DisplayFolder, TranslatedValue);
         }
