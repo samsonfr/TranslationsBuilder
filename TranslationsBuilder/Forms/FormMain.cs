@@ -481,7 +481,7 @@ namespace TranslationsBuilder {
       var ObjectName = gridTranslations.Rows[e.RowIndex].Cells[2].Value.ToString();
       var Language = SupportedLanguages.GetLanguageFromFullName(gridTranslations.Columns[e.ColumnIndex].HeaderText).LanguageId;
       string Translation = (cell.Value != null) ? cell.Value.ToString() : "";
-      TranslationsManager.SetDatasetObjectTranslation(ObjectType, PropertyName, ObjectName, Language, Translation);
+      TranslationsManager.SetDatasetObjectTranslation(ObjectType, PropertyName, ObjectName, Language, Translation, saveModel: true);
       cell.Style.BackColor = System.Drawing.Color.White;
     }
 

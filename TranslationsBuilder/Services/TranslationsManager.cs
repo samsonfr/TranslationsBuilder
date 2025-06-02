@@ -544,7 +544,7 @@ namespace TranslationsBuilder.Services {
       MetadataObject DatasetObject = GetMetadataObject(ObjectType, PropertyName, ObjectName);
       var DefaultTranslation = GetDefaultTranslation(ObjectName, ObjectType, PropertyName);
 
-      SetDatasetObjectTranslation(ObjectType, PropertyName, ObjectName, model.Culture, DefaultTranslation);
+      SetDatasetObjectTranslation(ObjectType, PropertyName, ObjectName, model.Culture, DefaultTranslation, saveModel:true);
       UpdateStatus(StatusCalback, model.Culture, ObjectName, DefaultTranslation, DefaultTranslation);
 
 
@@ -559,7 +559,7 @@ namespace TranslationsBuilder.Services {
       foreach (string language in secondaryLanguages) {
         var translation = TranslateContent(DefaultTranslation, language);
         Culture culture = model.Cultures[language];
-        SetDatasetObjectTranslation(ObjectType, PropertyName, ObjectName, language, translation);
+        SetDatasetObjectTranslation(ObjectType, PropertyName, ObjectName, language, translation, saveModel:true);
         UpdateStatus(StatusCalback, language, ObjectName, DefaultTranslation, translation);
       }
 
@@ -892,7 +892,7 @@ namespace TranslationsBuilder.Services {
       }
     }
 
-    public static void SetDatasetObjectTranslation(string ObjectType, string PropertyName, string ObjectName, string TargetLanguage, string TranslatedValue) {
+    public static void SetDatasetObjectTranslation(string ObjectType, string PropertyName, string ObjectName, string TargetLanguage, string TranslatedValue, bool saveModel) {
 
       MetadataObject targetObject = TranslationsManager.GetMetadataObject(ObjectType, PropertyName, ObjectName);
 
@@ -914,8 +914,9 @@ namespace TranslationsBuilder.Services {
 
       }
 
-      model.SaveChanges();
-
+      if (saveModel) {
+        model.SaveChanges();
+      }
     }
 
     public static void UpdateDisplayFolderForTable(string ObjectName, string TargetLanguage, string TranslatedValue) {
@@ -1034,8 +1035,7 @@ namespace TranslationsBuilder.Services {
             // Scan rows
 
             int rowCount = worksheet.CellsUsed().Max(cell => cell.Address.RowNumber);
-
-            // enumerate through lines in CSV data
+            
             for (int row = 1; row < rowCount; ++row)
             {
               string objectType = worksheet.Cell(row + 1, 1).Value.GetText();
@@ -1055,12 +1055,14 @@ namespace TranslationsBuilder.Services {
                   string translatedValue = !curValue.IsBlank ? curValue.GetText() : String.Empty;
 
                   if (!string.IsNullOrEmpty(translatedValue) && TranslationsManager.EnsureMetadataObjectExists(objectType, objectName))
-                  {
-                    TranslationsManager.SetDatasetObjectTranslation(objectType, propertyName, objectName, targetLanguage, translatedValue);
+                  {                    
+                    TranslationsManager.SetDatasetObjectTranslation(objectType, propertyName, objectName, targetLanguage, translatedValue, saveModel:false);
                   }
                 }
               }
             }
+
+            model.SaveChanges();
           }
         }
       }
